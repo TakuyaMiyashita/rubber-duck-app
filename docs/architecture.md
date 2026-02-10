@@ -15,9 +15,10 @@
 
 | レイヤー | 技術 | 理由 |
 |---------|------|------|
-| フレームワーク | Electron 33+ | macOS/Windows クロスプラットフォーム |
+| フレームワーク | Electron 31 | macOS/Windows クロスプラットフォーム |
 | フロントエンド | HTML/CSS/Vanilla JS | 軽量・依存少・Electronと相性良 |
 | スタイリング | CSS Custom Properties | ダークテーマ対応、モダンなデザインシステム |
+| 音声認識 | whisper.cpp (ローカル) | オフライン日本語STT、API不要 |
 | ビルド | electron-builder | macOS(dmg) / Windows(exe) 両対応 |
 | パッケージ管理 | npm | 標準 |
 
@@ -38,7 +39,7 @@
 │  │               │  │               │  │
 │  │ - App起動     │  │ - UI描画      │  │
 │  │ - ウィンドウ管理│  │ - チャットUI  │  │
-│  │ - システムトレイ│  │ - アニメーション│  │
+│  │ - Whisper転写 │  │ - 音声録音    │  │
 │  │ - IPC通信     │◄─►│ - IPC通信     │  │
 │  │ - ファイルI/O  │  │               │  │
 │  │               │  │               │  │
@@ -62,26 +63,30 @@ rubber_duck_app/
 │   ├── commands.md          # 開発コマンド集
 │   └── features.md          # 機能仕様書
 ├── dev-log.md               # 開発ログ（Qiita記事用）
+├── models/                   # Whisperモデル（gitignore対象）
+│   └── ggml-base.bin         # ggml base モデル（141MB）
 ├── src/
 │   ├── main/
-│   │   └── main.js          # Electronメインプロセス
+│   │   ├── main.js           # Electronメインプロセス
+│   │   └── whisper.js        # whisper.cpp ラッパー
 │   ├── preload/
-│   │   └── preload.js       # プリロードスクリプト
+│   │   └── preload.js        # プリロードスクリプト
 │   └── renderer/
-│       ├── index.html        # メインHTML
+│       ├── index.html         # メインHTML
 │       ├── styles/
-│       │   ├── reset.css     # CSSリセット
-│       │   ├── variables.css # デザイントークン
-│       │   └── main.css      # メインスタイル
+│       │   ├── reset.css      # CSSリセット
+│       │   ├── variables.css  # デザイントークン
+│       │   └── main.css       # メインスタイル
 │       ├── js/
-│       │   ├── app.js        # アプリエントリポイント
-│       │   ├── chat.js       # チャットロジック
-│       │   ├── duck.js       # ダックアニメーション
-│       │   └── storage.js    # 会話保存ロジック
+│       │   ├── app.js         # アプリエントリポイント
+│       │   ├── chat.js        # チャットロジック
+│       │   ├── duck.js        # ダックアニメーション
+│       │   ├── voice.js       # 音声録音・Whisper連携
+│       │   └── storage.js     # 会話保存ロジック
 │       └── assets/
-│           └── duck.svg      # ダックアイコン
-├── build/                    # ビルド用アセット
-│   └── icon.png              # アプリアイコン
+│           └── duck.svg       # ダックアイコン
+├── build/                     # ビルド用アセット
+│   └── icon.png               # アプリアイコン
 ├── package.json
 ├── .gitignore
 └── CLAUDE.md                 # AI開発用コンテキスト
@@ -91,7 +96,7 @@ rubber_duck_app/
 
 - `nodeIntegration: false` — レンダラーからNode.jsに直接アクセスさせない
 - `contextIsolation: true` — preloadでcontextBridgeを使いAPI公開
-- `sandbox: true` — レンダラープロセスをサンドボックス化
+- メディア権限は `setPermissionRequestHandler` で明示的に許可
 
 ## データ永続化
 

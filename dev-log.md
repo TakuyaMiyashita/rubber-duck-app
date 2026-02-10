@@ -315,6 +315,112 @@ VSCodeとElectronアプリでマイクリソースが競合してる可能性？
 
 再起動後に切り分ける。
 
+### 10:40 - 根本原因が判明: Electron で Web Speech API は動かない
+
+再起動しても変わらず。調べた結果、**根本的な問題**だった。
+
+`webkitSpeechRecognition` は Chromium に含まれるAPIだが、
+裏で Google の音声認識サーバーと通信している。
+通常の Chrome には Google API キーが同梱されているが、
+**Electron（オープンソース版 Chromium）にはそのキーが無い**。
+
+つまり：
+- マイクへのアクセス → ✅ 成功（だからmacのインジケーターは点灯する）
+- 音声認識サーバーへの接続 → ❌ APIキーが無いので失敗
+- `recognition.onresult` → 永遠に発火しない
+
+これは仕組み上の問題で、CSPやsandboxの話じゃなかった。
+ここに2時間くらい溶けた。つらい。
+
+**教訓**: ElectronはChromeじゃない。Chromiumベースだけど、
+Googleのプロプライエタリなサービスは使えない。
+Web Speech API はその代表例。
+
+### 10:45 - 方針転換: ローカル Whisper (whisper.cpp)
+
+代替手段を3つ検討した：
+
+1. **Google Cloud Speech API キー設定** — キー取得が面倒、課金発生
+2. **OpenAI Whisper API** — 高精度だが従量課金
+3. **ローカル whisper.cpp** — 完全オフライン、API不要
+
+ラバーダックアプリにAPI課金は馬鹿らしいので **3のローカルWhisper** を選択。
+
+#### セットアップ
+
+```bash
+brew install whisper-cpp
+# ggml-base モデルをダウンロード（141MB）
+curl -L -o models/ggml-base.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+```
+
+動作確認：
+```bash
+whisper-cli -m models/ggml-base.bin -l ja -np /tmp/test.wav
+# → [00:00:00.000 --> 00:00:02.000]  (音楽)
+```
+
+無音WAVで「(音楽)」と返ってきた。Whisper あるある。
+ちゃんと動いてる証拠。
+
+### 11:00 - 実装: Web Speech API → Whisper 全面書き換え
+
+**アーキテクチャ変更のポイント：**
+
+旧（Web Speech API）:
+```
+Renderer: webkitSpeechRecognition → Google Server → onresult
+```
+
+新（whisper.cpp）:
+```
+Renderer: getUserMedia → AudioContext → PCM録音 → IPC送信
+Main:     PCM受信 → WAV変換 → whisper-cli実行 → テキスト返却
+Renderer: テキスト受信 → 自動送信 → ダック応答
+```
+
+**変更ファイル一覧：**
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `src/main/whisper.js` | **新規** whisper.cpp ラッパーモジュール |
+| `src/main/main.js` | transcribe IPC ハンドラ追加 |
+| `src/preload/preload.js` | transcribe API 公開 |
+| `src/renderer/js/voice.js` | **全面書き換え** 録音+VAD+IPC |
+| `src/renderer/js/app.js` | processing状態のUI追加 |
+| `src/renderer/styles/main.css` | processing状態のCSS追加 |
+| `src/renderer/index.html` | CSPからGoogle許可を削除 |
+
+**技術的なポイント：**
+
+1. **録音**: `AudioContext({ sampleRate: 16000 })` + `ScriptProcessorNode`
+   - 16kHz mono で直接録音（Whisperの入力フォーマット）
+   - ScriptProcessorNode は deprecated だけど、AudioWorklet は
+     別ファイルが必要で複雑になるので割り切り
+
+2. **無音検出（VAD）**: RMS ベースの簡易実装
+   - 閾値 0.015 以下が12フレーム続いたら発話終了と判定
+   - ≒1.5秒の無音で自動区切り
+
+3. **WAV変換**: Float32 → Int16 PCM + WAVヘッダを手書き
+   - 外部ライブラリ不要で軽量
+
+4. **Whisper出力のクリーニング**: ハルシネーション除去
+   - `(音楽)`, `[BLANK_AUDIO]`, `ご視聴ありがとう` などを除去
+   - Whisperは無音区間で幻覚テキストを生成しがちなので必須
+
+**UI状態遷移：**
+- `idle` → マイクボタン通常、"Talk to your duck..."
+- `listening` → ボタン赤パルス、"Listening..."
+- `processing` → ボタン黄色点滅、"Transcribing..."
+- `denied` → ボタン半透明、操作不可
+
+### 11:15 - 初回コミット
+
+git init してコミット。22ファイル。
+`.claude/` はローカル設定なので除外、`models/` は141MBなので .gitignore に追加。
+
 ---
 
 （ここから先は開発が進むにつれて追記される）

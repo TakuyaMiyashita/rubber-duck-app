@@ -13,6 +13,23 @@ npm start
 npm run dev
 ```
 
+## 音声認識セットアップ（whisper.cpp）
+
+```bash
+# whisper-cli インストール（macOS）
+brew install whisper-cpp
+
+# モデルダウンロード（base, 141MB, 日本語対応）
+mkdir -p models
+curl -L -o models/ggml-base.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+
+# 動作確認
+whisper-cli -m models/ggml-base.bin -l ja -np /tmp/test.wav
+```
+
+> Windows の場合は [whisper.cpp releases](https://github.com/ggerganov/whisper.cpp/releases) からビルド済みバイナリを取得。
+
 ## ビルド
 
 ```bash

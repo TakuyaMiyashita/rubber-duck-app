@@ -79,23 +79,35 @@
 
 **概要**: マイクボタンを押して声でダックに話しかけられる。
 
-**技術**: Web Speech API (`webkitSpeechRecognition`) — Chromium内蔵
+**技術**: whisper.cpp（ローカル音声認識） — 完全オフライン、API不要
+
+**前提**: whisper-cli + ggml-base モデルがローカルにインストール済みであること
+
+**フロー**:
+```
+マイクON → Web Audio API で PCM 録音（16kHz mono）
+        → 無音検出（RMSベースVAD）で発話区間を自動区切り
+        → IPC で main process に送信
+        → whisper-cli で日本語転写
+        → テキストを自動送信 → ダックが応答
+        → 録音は継続（マイクOFFまで）
+```
 
 **仕様**:
 - マイクボタンをクリックで録音開始/停止をトグル
-- `lang: 'ja-JP'` で日本語音声認識
-- `interimResults: true` でリアルタイム認識
-- `continuous: true` で停止操作まで連続認識
-- 確定テキスト（`isFinal`）のみ入力欄に追加
-- メッセージ送信時に録音中であれば自動停止
+- 日本語（`-l ja`）でローカル転写
+- 約1.5秒の無音で発話区間を自動区切り
+- 転写テキストは自動でチャットに送信（ダックが応答）
+- 録音はマイクボタンを再度押すまで継続
 - macOS: `systemPreferences.askForMediaAccess('microphone')` で権限要求
 - Windows: OS側で自動ハンドリング
-- インターネット接続が必要（Google音声認識サーバー使用）
+- インターネット接続不要
 
-**UI**:
-- 通常状態: グレーのマイクアイコンボタン
-- 録音中: 赤いパルスアニメーション
-- 権限拒否: 半透明、操作不可
+**UI状態**:
+- `idle`: グレーのマイクアイコンボタン、"Talk to your duck..."
+- `listening`: 赤いパルスアニメーション、"Listening..."
+- `processing`: 黄色点滅（転写中）、"Transcribing..."
+- `denied`: 半透明、操作不可
 
 ## サブ機能
 
