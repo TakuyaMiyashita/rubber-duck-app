@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- Body -->
+  <ellipse cx="60" cy="78" rx="38" ry="30" fill="#f0b429"/>
+  <!-- Head -->
+  <circle cx="60" cy="42" r="24" fill="#f7c948"/>
+  <!-- Eye (left) -->
+  <circle cx="52" cy="38" r="3.5" fill="#0d1117"/>
+  <circle cx="53" cy="37" r="1.2" fill="#fff"/>
+  <!-- Eye (right) -->
+  <circle cx="68" cy="38" r="3.5" fill="#0d1117"/>
+  <circle cx="69" cy="37" r="1.2" fill="#fff"/>
+  <!-- Beak -->
+  <ellipse cx="60" cy="50" rx="10" ry="5" fill="#e8920d"/>
+  <!-- Wing (left) -->
+  <ellipse cx="32" cy="78" rx="14" ry="20" fill="#dba02a" transform="rotate(-15 32 78)"/>
+  <!-- Wing (right) -->
+  <ellipse cx="88" cy="78" rx="14" ry="20" fill="#dba02a" transform="rotate(15 88 78)"/>
+  <!-- Cheek glow -->
+  <circle cx="44" cy="48" r="5" fill="#f0b429" opacity="0.5"/>
+  <circle cx="76" cy="48" r="5" fill="#f0b429" opacity="0.5"/>
+</svg>
