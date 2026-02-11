@@ -421,6 +421,62 @@ Renderer: テキスト受信 → 自動送信 → ダック応答
 git init してコミット。22ファイル。
 `.claude/` はローカル設定なので除外、`models/` は141MBなので .gitignore に追加。
 
+## セッション3: パッケージング＆配布
+
+### 18:20 - dmg バンドル配布
+
+GitHub Releases で `.dmg` として配布する方針に。
+whisper-cli とモデルをアプリにバンドルする形にした。
+
+**バンドル構成:**
+
+```
+Rubber Duck.app/Contents/Resources/
+├── bin/
+│   ├── whisper-cli         (638KB)
+│   ├── libwhisper.1.dylib  (420KB)
+│   ├── libggml.0.dylib     (79KB)
+│   ├── libggml-cpu.0.dylib (511KB)
+│   ├── libggml-blas.0.dylib(75KB)
+│   ├── libggml-metal.0.dylib(745KB)
+│   └── libggml-base.0.dylib(437KB)
+└── models/
+    └── ggml-base.bin        (141MB)
+```
+
+**やったこと:**
+
+1. **whisper-cli + dylibs のコピー & rpath修正**
+   - Homebrew からバイナリと依存ライブラリ6本をコピー
+   - `install_name_tool -add_rpath @loader_path/` でバイナリと同じ階層のdylibを参照
+   - `DYLD_LIBRARY_PATH` も念のため execFile 時に設定
+
+2. **whisper.js のパス解決を二重化**
+   - `app.isPackaged` で開発/本番を判定
+   - パッケージ時: `process.resourcesPath` 配下を参照
+   - 開発時: プロジェクトルートの `models/` + Homebrew の `whisper-cli`
+
+3. **electron-builder の `extraResources` 設定**
+   ```json
+   "extraResources": [
+     { "from": "bin/macos/", "to": "bin" },
+     { "from": "models/", "to": "models", "filter": ["*.bin"] }
+   ]
+   ```
+
+4. **アプリアイコン**
+   - duck.svg を macOS の `qlmanage` で PNG レンダリング
+   - `sips` で 512x512 にリサイズ
+
+**結果:**
+- `.dmg` サイズ: 219MB（モデルが141MBなのでこんなもん）
+- コード署名なし（開発者証明書がないので）
+  → ユーザーは右クリック→「開く」で起動する必要あり
+
+**未署名の注意点:**
+macOS Gatekeeper が未署名アプリをブロックする。
+回避策は Release Notes に書く。
+
 ---
 
 （ここから先は開発が進むにつれて追記される）

@@ -19,6 +19,18 @@
     "files": [
       "src/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "bin/macos/",
+        "to": "bin",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "models/",
+        "to": "models",
+        "filter": ["*.bin"]
+      }
+    ],
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": "dmg",

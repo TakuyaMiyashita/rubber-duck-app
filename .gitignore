@@ -1,6 +1,8 @@
 node_modules/
 dist/
 models/
+bin/
+build/icon.png
 *.dmg
 *.exe
 .DS_Store

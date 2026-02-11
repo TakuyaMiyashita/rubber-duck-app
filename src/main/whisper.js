@@ -4,19 +4,34 @@
  * フロー: Float32 PCM → WAV変換 → whisper-cli実行 → テキスト返却
  */
 const { execFile } = require('child_process');
+const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
-const MODEL_PATH = path.join(__dirname, '..', '..', 'models', 'ggml-base.bin');
+// パッケージ済みアプリか開発モードかで参照先を切り替え
+const isPackaged = app.isPackaged;
+
+function getResourcePath() {
+  return isPackaged ? process.resourcesPath : path.join(__dirname, '..', '..');
+}
+
+function getModelPath() {
+  return path.join(getResourcePath(), 'models', 'ggml-base.bin');
+}
 
 // whisper-cli のバイナリパスを解決
 let whisperBin = null;
 
 function findBinary() {
+  // 1. バンドル済みバイナリ（パッケージ時）
+  const bundled = path.join(getResourcePath(), 'bin', 'whisper-cli');
+  if (fs.existsSync(bundled)) return bundled;
+
+  // 2. Homebrew（開発時）
   const candidates = [
-    '/opt/homebrew/bin/whisper-cli',   // Homebrew ARM Mac
-    '/usr/local/bin/whisper-cli',      // Homebrew Intel Mac
+    '/opt/homebrew/bin/whisper-cli',   // ARM Mac
+    '/usr/local/bin/whisper-cli',      // Intel Mac
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
@@ -101,12 +116,18 @@ function transcribe(audioData, sampleRate = 16000) {
     const wavBuffer = float32ToWav(float32, sampleRate);
     fs.writeFileSync(tmpFile, wavBuffer);
 
-    execFile(getBinary(), [
-      '-m', MODEL_PATH,
+    const binPath = getBinary();
+    const binDir = path.dirname(binPath);
+
+    execFile(binPath, [
+      '-m', getModelPath(),
       '-l', 'ja',
       '-np',
       tmpFile,
-    ], { timeout: 30000 }, (error, stdout, stderr) => {
+    ], {
+      timeout: 30000,
+      env: { ...process.env, DYLD_LIBRARY_PATH: binDir },
+    }, (error, stdout, stderr) => {
       try { fs.unlinkSync(tmpFile); } catch (_) {}
 
       if (error) {
@@ -121,7 +142,7 @@ function transcribe(audioData, sampleRate = 16000) {
 }
 
 function isReady() {
-  if (!fs.existsSync(MODEL_PATH)) return false;
+  if (!fs.existsSync(getModelPath())) return false;
   try {
     const bin = getBinary();
     return fs.existsSync(bin) || bin === 'whisper-cli';
