@@ -62,22 +62,22 @@ electron-builder     ── .dmg / .exe パッケージング
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                  Electron App                   │
-│                                                 │
-│  ┌──────────────────┐  ┌────────────────────┐  │
-│  │  Main Process     │  │ Renderer Process   │  │
-│  │                   │  │                    │  │
-│  │  ├ App lifecycle  │  │  ├ Chat UI         │  │
-│  │  ├ File I/O       │◄─►│  ├ Duck animation │  │
-│  │  ├ Whisper STT    │  │  ├ Voice recording │  │
-│  │  └ IPC handlers   │  │  └ Session mgmt   │  │
-│  └──────────────────┘  └────────────────────┘  │
-│            ▲                    ▲                │
-│            └──── Preload ──────┘                │
-│              contextBridge API                  │
-│         (nodeIntegration: false)                │
-└─────────────────────────────────────────────────┘
++-------------------------------------------+
+|              Electron App                 |
+|                                           |
+|  +-----------------+  +-----------------+ |
+|  | Main Process    |  | Renderer        | |
+|  |                 |  |                 | |
+|  |  App lifecycle  |  |  Chat UI        | |
+|  |  File I/O       |<>|  Duck animation | |
+|  |  Whisper STT    |  |  Voice record   | |
+|  |  IPC handlers   |  |  Session mgmt   | |
+|  +--------+--------+  +--------+--------+ |
+|           |                    |           |
+|           +---- Preload -------+           |
+|            contextBridge API               |
+|         (nodeIntegration: false)           |
++-------------------------------------------+
 ```
 
 ## Getting Started
