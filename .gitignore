@@ -7,3 +7,5 @@ build/icon.png
 *.exe
 .DS_Store
 Thumbs.db
+dev-log.md
+qiita-article.md
