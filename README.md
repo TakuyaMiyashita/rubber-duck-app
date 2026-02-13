@@ -73,10 +73,10 @@ electron-builder     ── .dmg / .exe パッケージング
 |  |  Whisper STT    |  |  Voice record   | |
 |  |  IPC handlers   |  |  Session mgmt   | |
 |  +--------+--------+  +--------+--------+ |
-|           |                    |           |
-|           +---- Preload -------+           |
-|            contextBridge API               |
-|         (nodeIntegration: false)           |
+|           |                    |          |
+|           +---- Preload -------+          |
+|           contextBridge API               |
+|        (nodeIntegration: false)           |
 +-------------------------------------------+
 ```
 
